@@ -144,4 +144,3 @@ func writeToken(token interface{}, filename string) error {
 	return ioutil.WriteFile(filename, b, 0666)
 }
 
-
