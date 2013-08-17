@@ -4,5 +4,15 @@ runtime: go
 api_version: go1
 
 handlers:
+- url: /home
+  script: _go_app
+  login: required
+  secure: always
+
+- url: /settings/*
+  script: _go_app
+  login: required
+  secure: always
+
 - url: /.*
   script: _go_app

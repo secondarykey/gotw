@@ -33,12 +33,6 @@ type UserObject struct{
 
 func Usage() {
 	fmt.Println("Usage:")
-	fmt.Print("go run examples/twitter/twitter.go")
-	fmt.Print("  --consumerkey <consumerkey>")
-	fmt.Println("  --consumersecret <consumersecret>")
-	fmt.Println("")
-	fmt.Println("In order to get your consumerkey and consumersecret, you must register an 'app' at twitter.com:")
-	fmt.Println("https://dev.twitter.com/apps/new")
 }
 
 func NewTwitter(key string,secret string) *Twitter {

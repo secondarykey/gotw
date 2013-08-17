@@ -1,4 +1,4 @@
-package main
+package gotw
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"log"
 	"oauth"
 	"encoding/json"
-	"./twitter"
+	"twitter"
 )
 
 func main() {
