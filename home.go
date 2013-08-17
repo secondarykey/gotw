@@ -2,7 +2,6 @@ package gotw
 
 import (
     "fmt"
-    "log"
     "html/template"
     "net/http"
     "appengine"
@@ -17,13 +16,13 @@ type Config struct {
 
 type Agent struct {
 	Id string
-	SNSId string
 	Name string
 	Email string
 }
 
 type Authentication struct {
 	Id string
+	SNSId string
 	Name string
 	Token string
 	Secret string
@@ -34,6 +33,7 @@ func init() {
     http.HandleFunc("/logout", logoutHandler)
     http.HandleFunc("/home", homeHandler)
     http.HandleFunc("/settings/", settingsHandler)
+    http.HandleFunc("/settings/wtite", writeAgentHandler)
     http.HandleFunc("/settings/twitter/add", addTwitterHandler)
     http.HandleFunc("/settings/twitter/callback", callbackHandler)
 }
@@ -73,9 +73,6 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 
 	c := appengine.NewContext(r)
 	u := user.Current(c)
-	url, _ := user.LogoutURL(c, "/")
-	log.Print(url)
-
 	//IDでDatastoreを検索
 	q := datastore.NewQuery("Agent").Filter("Id =", u.ID)
 	count ,err := q.Count(c)
@@ -97,9 +94,29 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 func settingsHandler(w http.ResponseWriter, r *http.Request) {
 
 	//ユーザ情報から設定値を取得
+	c := appengine.NewContext(r)
+	u := user.Current(c)
 
+	handler(w,"template/settings.html",u)
+}
+func writeAgentHandler(w http.ResponseWriter, r *http.Request) {
 
-	handler(w,"template/settings.html",nil)
+	c := appengine.NewContext(r)
+	u := user.Current(c)
+
+	//IDでDatastoreを検索
+	q := datastore.NewQuery("Agent").Filter("Id =", u.ID)
+	count ,_ := q.Count(c)
+	if ( count == 0 ) {
+		agent := Agent {
+			Name:r.FormValue("name"),
+			Email:r.FormValue("email"),
+			Id:u.ID,
+		}
+		datastore.Put(c,datastore.NewIncompleteKey(c,"Agent",nil),&agent)
+	}
+
+	http.Redirect(w, r, "/settings/", http.StatusMovedPermanently)
 }
 
 func addTwitterHandler(w http.ResponseWriter, r *http.Request) {
