@@ -21,10 +21,9 @@ type UserObject struct {
 }
 
 func (this *Twitter) GetTimeline() []TweetObject {
-	response, err := this.consumer.Get(
+	response, err := this.oauth.Get(
 		"https://api.twitter.com/1.1/statuses/home_timeline.json",
-		map[string]string{"count": "10"},
-		this.atoken)
+		map[string]string{"count": "10"})
 	if err != nil {
 		panic(err)
 	}
@@ -41,12 +40,11 @@ func (this *Twitter) GetTimeline() []TweetObject {
 }
 
 func (this *Twitter) Update(status string) {
-	_, err := this.consumer.Post(
+	_, err := this.oauth.Post(
 		"https://api.twitter.com/1.1/statuses/update.json",
 		map[string]string{
-		"status": status,
-	},
-		this.atoken)
+			"status": status,
+		})
 	if err != nil {
 		panic(err)
 	}

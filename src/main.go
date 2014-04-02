@@ -6,11 +6,11 @@ package main
 // 組み込みフィールド
 
 import (
-	"./twitter"
+	"twitter"
 	"encoding/json"
 	"fmt"
-	"github.com/mrjones/oauth"
 	"io/ioutil"
+	"web"
 )
 
 type GotwError struct {
@@ -28,11 +28,13 @@ func NewError(title, message string) GotwError {
 
 func main() {
 
+	/*
 	defer func() {
 		if err := recover(); err != nil {
 			fmt.Println(err)
 		}
 	}()
+	*/
 
 	twt := getTwitter()
 	setAccessToken(twt)
@@ -41,34 +43,30 @@ func main() {
 }
 
 func getTwitter() *twitter.Twitter {
-	var consumer oauth.AccessToken
-	err := readJson(&consumer, "consumer.json")
+	var tokenSet web.TokenSet
+	err := readJson(&tokenSet, "consumer.json")
 	if err != nil {
 		panic(NewError("consumer.json読み込みエラー", err.Error()))
 	}
-	t := twitter.NewTwitter(consumer.Token, consumer.Secret)
+	t := twitter.NewTwitter(tokenSet.Token, tokenSet.Secret)
 	return t
 }
 
 func setAccessToken(t *twitter.Twitter) {
-	var access oauth.AccessToken
-	err := readJson(&access, "access.json")
+	var tokenSet web.TokenSet
+	err := readJson(&tokenSet, "access.json")
 	if err != nil {
-		t.GetRequestTokenAndUrl("oob")
+		t.SetRequestTokenAndUrl("oob")
 
-		fmt.Println("認証情報なしなので右にアクセス: " + t.Url)
+		fmt.Println("認証情報なしなので右にアクセス: " + t.GetAuthorizationUrl())
 		verificationCode := ""
 
 		fmt.Print(">")
 		fmt.Scanln(&verificationCode)
 
-		access = *t.GetAccessToken(verificationCode)
-		if err = writeJson(&access, "access.json"); err != nil {
-			panic(err)
-		}
-
+		t.GetAccessToken(verificationCode)
 	} else {
-		t.SetAccessToken(&access)
+		t.SetAccessToken(&tokenSet)
 	}
 	return
 }
