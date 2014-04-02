@@ -101,9 +101,9 @@ func (self *OAuth1) GetRequestToken(callback string) {
 func (self *OAuth1) requestString(method string, url string, args *parameter) string {
 	ret := method + "&" + escape(url)
 	esp := "&"
-	for _, key := range args.Keys() {
+	for _, key := range args.keys() {
 		ret += esp
-		ret += escape(key+"="+args.Get(key))
+		ret += escape(key+"="+args.get(key))
 		esp = escape("&")
 	}
 	return ret
@@ -120,7 +120,7 @@ func (self *OAuth1) sign(message, key string) string {
 
 func (self *OAuth1) addBaseParams() {
 
-	self.authParams = NewParams()
+	self.authParams = NewParameter()
 
 	clock := time.Now()
 	ts := clock.Unix()
@@ -202,12 +202,13 @@ func (self *OAuth1) createOAuthWeb(method string, url string, args map[string]st
 	self.addBaseParams()
 	self.addParam(TOKEN_PARAM, self.AccessToken.Token)
 
-	param := self.authParams.Copy()
-
+	param := self.authParams.copy()
 	wb := NewWeb()
 	if args != nil {
 		for key, value := range args {
+			//Web側の引数に追加
 			wb.AddParam(key, value)
+			//ベースの方にも追加
 			param.add(key, value)
 		}
 	}
@@ -228,11 +229,11 @@ func (self *OAuth1) addParam(key, value string) {
 
 func (self *OAuth1) getOAuthHeader() string {
 	hdr := "OAuth "
-	for pos, key := range self.authParams.Keys() {
+	for pos, key := range self.authParams.keys() {
 		if pos > 0 {
 			hdr += ","
 		}
-		hdr += key+"=\""+self.authParams.Get(key)+"\""
+		hdr += key+"=\""+self.authParams.get(key)+"\""
 	}
 	return hdr
 }

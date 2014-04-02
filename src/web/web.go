@@ -13,7 +13,7 @@ import (
  */
 type Web struct {
 	contentType string
-	header http.Header
+	header      http.Header
 	params *parameter
 }
 
@@ -25,12 +25,14 @@ type parameter struct {
 }
 
 /*
+ * URLエスケープ
  */
 func escape(param string) string {
 	return url.QueryEscape(param)
 }
 
 /*
+ * HTTP エラーコード
  */
 type HttpError struct {
 	status     string
@@ -38,32 +40,37 @@ type HttpError struct {
 }
 
 /*
+ * エラー実装
  */
 func (self HttpError) Error() string {
 	return strconv.Itoa(self.statusCode) + ":\n" +
-		self.status
+			self.status
 }
 
 /*
+ * Webインスタンスの生成
  */
 func NewWeb() *Web {
 	return &Web{
-		params: NewParams(),
+		params: NewParameter(),
 		header: http.Header{},
 		contentType:"",
 	}
 }
 
-
 /*
+ * パラメータの追加
  */
 func (self *Web) AddParam(key, value string) {
 	self.params.add(key, value)
 }
 
 /*
+ * パラメータ用のType
+ * paramは保存場所
+ * orderは引数のソート用に使用する
  */
-func NewParams() *parameter {
+func NewParameter() *parameter {
 	return &parameter{
 		param: make(map[string]string),
 		order: make([]string, 0),
@@ -71,42 +78,56 @@ func NewParams() *parameter {
 }
 
 /*
+ * 引数の追加を行う
  */
 func (self *parameter) add(key, value string) {
-	self.addUnEscape(key,escape(value))
+	self.addUnEscape(key, escape(value))
 }
 
+/*
+ * addのエスケープをしない場合の呼び出し
+ * 通常copyの時しか使わない
+ */
 func (self *parameter) addUnEscape(key, value string) {
-	self.param[key] = value
-	self.order = append(self.order, key)
+	if _, flag := self.param[key]; !flag {
+		self.param[key] = value
+		self.order = append(self.order, key)
+	}
 }
 
-func (self *parameter) Get(key string) string {
+/*
+ * 値の取得
+ */
+func (self *parameter) get(key string) string {
 	return self.param[key]
 }
 
-func (self *parameter) Copy() *parameter {
-	clone := NewParams()
-	for _,key := range self.Keys() {
-		clone.addUnEscape(key,self.Get(key))
+/*
+ * 新規にparameterを生成して、自身のコピーをする
+ */
+func (self *parameter) copy() *parameter {
+	clone := NewParameter()
+	for _, key := range self.keys() {
+		clone.addUnEscape(key, self.get(key))
 	}
 	return clone
 }
 
 /*
+ * キーの取り出しsort.Strings()でソートしてから返す
  */
-func (self *parameter) Keys() []string {
+func (self *parameter) keys() []string {
 	sort.Strings(self.order)
 	return self.order
 }
 
 func (self *Web) getQuery() string {
-	params := self.params.Keys()
+	params := self.params.keys()
 	ret := ""
 	sep := ""
 	for _, key := range params {
-		value := self.params.Get(key)
-		ret += sep + escape(key) + "=" + escape(value)
+		value := self.params.get(key)
+		ret += sep+key+"="+value
 		sep = "&"
 	}
 	return ret
@@ -115,19 +136,23 @@ func (self *Web) getQuery() string {
 /*
  */
 func (self *Web) Get(url string) (*http.Response, error) {
-	return self.execute("GET", url + "?" + self.getQuery(),"")
+	q := self.getQuery()
+	if q != "" {
+		q += "?" + q
+	}
+	return self.execute("GET", url+q, "")
 }
 
 /*
  */
 func (self *Web) Post(url string) (*http.Response, error) {
 	self.contentType = "application/x-www-form-urlencoded"
-	return self.execute("POST", url,self.getQuery())
+	return self.execute("POST", url, self.getQuery())
 }
 
 /*
  */
-func (self *Web) execute(method string, url string,body string) (*http.Response, error) {
+func (self *Web) execute(method string, url string, body string) (*http.Response, error) {
 
 	req, reqErr := http.NewRequest(method, url, strings.NewReader(body))
 	if reqErr != nil {
@@ -138,7 +163,7 @@ func (self *Web) execute(method string, url string,body string) (*http.Response,
 	req.Header = self.header
 	fmt.Println(self.header)
 	if self.contentType != "" {
-		req.Header.Set("Content-Type",self.contentType)
+		req.Header.Set("Content-Type", self.contentType)
 	}
 	req.Header.Set("Content-Length", strconv.Itoa(len(body)))
 
