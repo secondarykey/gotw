@@ -3,13 +3,17 @@ package web
 import (
 	"testing"
 	. "github.com/smartystreets/goconvey/convey"
+	"io/ioutil"
+	"encoding/json"
 )
 
 func TestOAuth(t *testing.T) {
 
+	var tokenSet TokenSet
+	readJson(&tokenSet, "consumer.json")
 	oa := NewOAuth1(
-		"ysTHKkYBW9PrHtgtYyElsA",
-		"Ofl3NvzYGQKeNghBZ8KP1HMcZELxfv7dVnacjpDHvQ",
+		tokenSet.Token,
+		tokenSet.Secret,
 		"https://api.twitter.com/oauth/request_token",
 		"https://api.twitter.com/oauth/authorize",
 		"https://api.twitter.com/oauth/access_token")
@@ -28,4 +32,18 @@ func TestOAuth(t *testing.T) {
 	})
 
 
+}
+
+/*
+ *
+ *
+ *
+ *
+ */
+func readJson(token interface{}, filename string) error {
+	if b, err := ioutil.ReadFile(filename); err != nil {
+		return err
+	} else {
+		return json.Unmarshal(b, token)
+	}
 }
