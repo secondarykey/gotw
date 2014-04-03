@@ -10,7 +10,7 @@ import (
 func TestOAuth(t *testing.T) {
 
 	var tokenSet TokenSet
-	readJson(&tokenSet, "consumer.json")
+	readJson(&tokenSet, "../../consumer.json")
 	oa := NewOAuth1(
 		tokenSet.Token,
 		tokenSet.Secret,
