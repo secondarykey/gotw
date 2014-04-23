@@ -1,16 +1,16 @@
 package main
 
-//
 // 匿名フィールド(Methodの継承)
 // interface{} Any型
 // 組み込みフィールド
 
 import (
-	"twitter"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"twitter"
 	"web"
+	"strings"
 )
 
 type GotwError struct {
@@ -18,40 +18,38 @@ type GotwError struct {
 	Message string
 }
 
-func (this *GotwError) Error() string {
-	return fmt.Sprintf("%s:\n%s", this.Title, this.Message)
-}
-
-func NewError(title, message string) GotwError {
-	return GotwError{title, message}
-}
-
 func main() {
 
 	/*
-	defer func() {
-		if err := recover(); err != nil {
-			fmt.Println(err)
-		}
-	}()
+		defer func() {
+			if err := recover(); err != nil {
+				fmt.Println(err)
+			}
+		}()
 	*/
 
 	twt := getTwitter()
 	setAccessToken(twt)
-
 	wait(twt)
 }
 
+/*
+ * consumer.jsonからTwitterオブジェクトを生成
+ */
 func getTwitter() *twitter.Twitter {
 	var tokenSet web.TokenSet
 	err := readJson(&tokenSet, "consumer.json")
 	if err != nil {
-		panic(NewError("consumer.json読み込みエラー", err.Error()))
+		panic(err)
 	}
 	t := twitter.NewTwitter(tokenSet.Token, tokenSet.Secret)
 	return t
 }
 
+/*
+ * アクセストークンファイルがある場合は読み込んで設定
+ * 存在しない場合はコードをリクエストトークンを生成して、取得しにいく
+ */
 func setAccessToken(t *twitter.Twitter) {
 	var tokenSet web.TokenSet
 	err := readJson(&tokenSet, "access.json")
@@ -65,34 +63,66 @@ func setAccessToken(t *twitter.Twitter) {
 		fmt.Scanln(&verificationCode)
 
 		t.GetAccessToken(verificationCode)
+		writeJson(t.GetToken(),"access.json")
 	} else {
 		t.SetAccessToken(&tokenSet)
 	}
 	return
 }
 
+/*
+ * コマンドに応じた処理を行う
+ */
 func cmd(t *twitter.Twitter, cmd string) bool {
 
-	switch cmd {
-	case "timeline":
-		tweets := t.GetTimeline()
-		for _, tweet := range tweets {
-			fmt.Println(tweet.User.Name, tweet.User.Screen_name, tweet.Created_at, "------")
-			fmt.Println(tweet.Text)
+	if cmd == "" {
+		return true
+	}
+
+	switch {
+	case cmd == "timeline":
+		tweets, err := t.GetTimeline()
+		if err != nil {
+			fmt.Println(err)
+		} else {
+			printTweet(tweets)
 		}
-	case "q":
+	case cmd == "q":
 		return false
+
+	case strings.HasPrefix(cmd,"search ") == true:
+
+		word := cmd[7:]
+		tweets, err := t.SearchAOA(word)
+		if err != nil {
+			fmt.Println(err)
+		} else {
+			printTweet(tweets)
+		}
 	default:
 		fmt.Print("Sending status?[Y/n]:")
 		ans := ""
 		fmt.Scanln(&ans)
 		if ans == "Y" {
-			t.Update(cmd)
+			err := t.Update(cmd)
+			if err != nil {
+				fmt.Println(err)
+			}
 		}
 	}
 	return true
 }
 
+func printTweet(tweets []twitter.TweetObject) {
+	for _, tweet := range tweets {
+		fmt.Println(tweet.User.Name, tweet.User.Screen_name, tweet.Created_at, "------")
+		fmt.Println(tweet.Text)
+	}
+}
+
+/*
+ * コマンドの永久ループ
+ */
 func wait(t *twitter.Twitter) {
 	cmd(t, "timeline")
 	for {
@@ -108,10 +138,7 @@ func wait(t *twitter.Twitter) {
 }
 
 /*
- *
- *
- *
- *
+ * Json形式のファイルをTypeに読み込む
  */
 func readJson(token interface{}, filename string) error {
 	if b, err := ioutil.ReadFile(filename); err != nil {
@@ -122,11 +149,7 @@ func readJson(token interface{}, filename string) error {
 }
 
 /*
- *
- *
- *
- *
- *
+ * TypeをJson形式で書き込む
  */
 func writeJson(token interface{}, filename string) error {
 	if b, err := json.Marshal(token); err != nil {

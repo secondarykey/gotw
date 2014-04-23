@@ -13,6 +13,7 @@ func TestWeb(t *testing.T) {
 	})
 
 	Convey("Web Test", t, func() {
+
 		Convey("Web生成", func() {
 			wb := NewWeb()
 			So(wb.contentType, ShouldEqual, "")
@@ -26,6 +27,7 @@ func TestWeb(t *testing.T) {
 			So(resp.StatusCode, ShouldEqual, 200)
 			So(err, ShouldBeNil)
 		})
+
 		Convey("存在しないWebにアクセス", func() {
 			wb := NewWeb()
 			resp, err := wb.Get("http://www.test")
@@ -35,7 +37,9 @@ func TestWeb(t *testing.T) {
 	})
 
 	Convey("HttpError Test", t, func() {
-		Convey("生成のテスト", func() {
+		Convey("表示の確認", func() {
+			err := HttpError{"正常", 200}
+			So(err.Error(), ShouldEqual, "200:\n正常")
 		})
 	})
 

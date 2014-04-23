@@ -6,18 +6,22 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"fmt"
 )
 
 /*
+ * Webアクセス用のタイプ
+ * contentType : コンテンツタイプ
+ * header : リクエスト時のヘッダを指定
+ * params : 引数(AddParamで設定)
  */
 type Web struct {
 	contentType string
 	header      http.Header
-	params *parameter
+	params      *parameter
 }
 
 /*
+ * パラメータ用のタイプ
  */
 type parameter struct {
 	param map[string]string
@@ -44,7 +48,7 @@ type HttpError struct {
  */
 func (self HttpError) Error() string {
 	return strconv.Itoa(self.statusCode) + ":\n" +
-			self.status
+		self.status
 }
 
 /*
@@ -52,9 +56,9 @@ func (self HttpError) Error() string {
  */
 func NewWeb() *Web {
 	return &Web{
-		params: NewParameter(),
-		header: http.Header{},
-		contentType:"",
+		params:      NewParameter(),
+		header:      http.Header{},
+		contentType: "",
 	}
 }
 
@@ -63,6 +67,10 @@ func NewWeb() *Web {
  */
 func (self *Web) AddParam(key, value string) {
 	self.params.add(key, value)
+}
+
+func (self *Web) AddHeader(key, value string) {
+	self.header.Add(key, value)
 }
 
 /*
@@ -121,29 +129,34 @@ func (self *parameter) keys() []string {
 	return self.order
 }
 
+/*
+ * リクエストパラメータを設定
+ */
 func (self *Web) getQuery() string {
 	params := self.params.keys()
 	ret := ""
 	sep := ""
 	for _, key := range params {
 		value := self.params.get(key)
-		ret += sep+key+"="+value
+		ret += sep + key + "=" + value
 		sep = "&"
 	}
 	return ret
 }
 
 /*
+ * Webページの取得を行う(GET)
  */
 func (self *Web) Get(url string) (*http.Response, error) {
 	q := self.getQuery()
 	if q != "" {
-		q += "?" + q
+		q = "?" + q
 	}
 	return self.execute("GET", url+q, "")
 }
 
 /*
+ * Webページの取得を行う(POST)
  */
 func (self *Web) Post(url string) (*http.Response, error) {
 	self.contentType = "application/x-www-form-urlencoded"
@@ -151,28 +164,33 @@ func (self *Web) Post(url string) (*http.Response, error) {
 }
 
 /*
+ * methodに応じた処理を行う
+ * 現状サポートはGET、POSTのみ
  */
 func (self *Web) execute(method string, url string, body string) (*http.Response, error) {
 
+	//リクエストの生成
 	req, reqErr := http.NewRequest(method, url, strings.NewReader(body))
 	if reqErr != nil {
 		return nil, reqErr
 	}
-
 	//ヘッダの設定
 	req.Header = self.header
-	fmt.Println(self.header)
+
+	//コンテンツタイプがある場合は設定
 	if self.contentType != "" {
 		req.Header.Set("Content-Type", self.contentType)
 	}
 	req.Header.Set("Content-Length", strconv.Itoa(len(body)))
 
 	client := &http.Client{}
+	//リクエストによる処理を行う
 	resp, doErr := client.Do(req)
 	if doErr != nil {
 		return nil, doErr
 	}
 
+	//ステータスコードに応じてエラー処理をする
 	if resp.StatusCode < http.StatusOK ||
 		resp.StatusCode >= http.StatusMultipleChoices {
 		defer resp.Body.Close()
@@ -181,5 +199,5 @@ func (self *Web) execute(method string, url string, body string) (*http.Response
 			statusCode: resp.StatusCode,
 		}
 	}
-	return resp, doErr
+	return resp, nil
 }

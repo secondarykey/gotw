@@ -39,9 +39,11 @@ func (this *Twitter) GetAccessToken(code string) {
 	return
 }
 
+func (this *Twitter) GetToken() *web.TokenSet {
+	return this.oauth.AccessToken
+}
+
 func (this *Twitter) SetAccessToken(tokenSet *web.TokenSet) {
 	this.oauth.AccessToken = tokenSet
 	return
 }
-
-
