@@ -2,11 +2,11 @@ package twitter
 
 import (
 	"fmt"
-	"web"
+	"github.com/secondarykey/golib/oauth"
 )
 
 type Twitter struct {
-	oauth *web.OAuth1
+	oauth *oauth.OAuth1
 }
 
 func Usage() {
@@ -14,7 +14,7 @@ func Usage() {
 }
 
 func NewTwitter(key string, secret string) *Twitter {
-	oa := web.NewOAuth1(
+	oa := oauth.NewOAuth1(
 		key, secret,
 		"https://api.twitter.com/oauth/request_token",
 		"https://api.twitter.com/oauth/authorize",
@@ -39,11 +39,11 @@ func (this *Twitter) GetAccessToken(code string) {
 	return
 }
 
-func (this *Twitter) GetToken() *web.TokenSet {
+func (this *Twitter) GetToken() *oauth.TokenSet {
 	return this.oauth.AccessToken
 }
 
-func (this *Twitter) SetAccessToken(tokenSet *web.TokenSet) {
+func (this *Twitter) SetAccessToken(tokenSet *oauth.TokenSet) {
 	this.oauth.AccessToken = tokenSet
 	return
 }

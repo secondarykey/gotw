@@ -4,7 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"io/ioutil"
-	"web"
+	"github.com/secondarykey/golib/web"
 )
 
 /*

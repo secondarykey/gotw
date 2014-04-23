@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"twitter"
-	"web"
+	"github.com/secondarykey/golib/oauth"
 	"strings"
 )
 
@@ -37,7 +37,7 @@ func main() {
  * consumer.jsonからTwitterオブジェクトを生成
  */
 func getTwitter() *twitter.Twitter {
-	var tokenSet web.TokenSet
+	var tokenSet oauth.TokenSet
 	err := readJson(&tokenSet, "consumer.json")
 	if err != nil {
 		panic(err)
@@ -51,7 +51,7 @@ func getTwitter() *twitter.Twitter {
  * 存在しない場合はコードをリクエストトークンを生成して、取得しにいく
  */
 func setAccessToken(t *twitter.Twitter) {
-	var tokenSet web.TokenSet
+	var tokenSet oauth.TokenSet
 	err := readJson(&tokenSet, "access.json")
 	if err != nil {
 		t.SetRequestTokenAndUrl("oob")
