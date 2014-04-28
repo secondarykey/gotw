@@ -25,21 +25,30 @@ $(document).ready( function() {
         }).addTo(map);
 
         function put(tweet) {
+          var user = tweet.User
           var coord = tweet.coordinates.coordinates
           var lon = coord[0]
           var lat = coord[1]
 
           var marker = L.marker([lat,lon]).addTo(map);
-          var content = '<div>' + tweet.Text + '</div>';
+          var img = '<img src="' + user.Profile_image_url + '" align="left"/>'
+          var name = user.Name
+          var link = '<a href="http://twitter.com/' + user.Screen_name + '">@' + user.Screen_name + '</a>'
+          var content =
+          '<div class="row">' +
+          img +
+          name + '<br>' + link +
+          '</div>' +
+          '<div class="row">' +
+          tweet.Text +
+          '</div>';
           marker.bindPopup(content);
         }
 
-        $("#rain").click(function() {
-            $.getJSON("./rain.json", function(json){
-                for ( var i = 0; i < json.length; ++i ) {
-                    put(json[i])
-                }
-            });
+        $.getJSON("./rain.json", function(json){
+            for ( var i = 0; i < json.length; ++i ) {
+                put(json[i])
+            }
         });
 });
 
