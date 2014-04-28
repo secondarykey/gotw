@@ -3,13 +3,13 @@ package twitter
 import (
 	"encoding/base64"
 	"encoding/json"
-	"io/ioutil"
 	"github.com/secondarykey/golib/web"
+	"io/ioutil"
 )
 
 /*
   Tweetの情報
- */
+*/
 type TweetObject struct {
 	Created_at              string
 	Id_str                  string
@@ -17,11 +17,20 @@ type TweetObject struct {
 	Source                  string
 	In_reply_to_user_id_str string
 	User                    UserObject
+	Geo                     Geo `json:"coordinates"`
 }
+
+type Geo struct {
+	Coordinates Coordinate `json:"coordinates,float"`
+	Type        string
+}
+
+type Coordinate [2]CoordType
+type CoordType float64
 
 /*
  検索時のデータType
- */
+*/
 type SearchObjects struct {
 	Statuses        []TweetObject
 	Search_metadata SearchMetadata
@@ -29,7 +38,7 @@ type SearchObjects struct {
 
 /*
   検索APIのメタデータType
- */
+*/
 type SearchMetadata struct {
 	Max_id       int64
 	Since_id     int64
@@ -44,16 +53,17 @@ type SearchMetadata struct {
 
 /*
   ユーザ情報のType
- */
+*/
 type UserObject struct {
 	Id_str      string
 	Name        string
 	Screen_name string
+	Profile_image_url string
 }
 
 /*
   タイムラインの取得
- */
+*/
 func (this *Twitter) GetTimeline() ([]TweetObject, error) {
 	response, err := this.oauth.Get(
 		"https://api.twitter.com/1.1/statuses/home_timeline.json",
@@ -80,7 +90,7 @@ func (this *Twitter) GetTimeline() ([]TweetObject, error) {
 
 /*
   ステータス更新API呼び出し
- */
+*/
 func (this *Twitter) Update(status string) error {
 	_, err := this.oauth.Post(
 		"https://api.twitter.com/1.1/statuses/update.json",
@@ -95,7 +105,7 @@ func (this *Twitter) Update(status string) error {
 
 /*
   Application-only auth の戻り値
- */
+*/
 type AccessTokenAOA struct {
 	Token_Type   string
 	Access_Token string
@@ -103,7 +113,7 @@ type AccessTokenAOA struct {
 
 /*
   Application-only Auth 用の検索
- */
+*/
 func (this *Twitter) SearchAOA(word string) ([]TweetObject, error) {
 
 	url := "https://api.twitter.com/oauth2/token"
@@ -131,6 +141,8 @@ func (this *Twitter) SearchAOA(word string) ([]TweetObject, error) {
 	wb.AddParam("count", "100")
 	//wb.AddParam("screen_name", "secondarykey")
 	wb.AddParam("q", word)
+
+	wb.AddParam("geocode", "38,138,500km")
 	result, err := wb.Get(url)
 	if err != nil {
 		return nil, err
@@ -141,6 +153,7 @@ func (this *Twitter) SearchAOA(word string) ([]TweetObject, error) {
 	if err != nil {
 		return nil, err
 	}
+	ioutil.WriteFile("searchData", data, 0666)
 
 	//検索用のオブジェクト
 	var tweets SearchObjects

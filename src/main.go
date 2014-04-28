@@ -11,6 +11,8 @@ import (
 	"twitter"
 	"github.com/secondarykey/golib/oauth"
 	"strings"
+	"net/http"
+	"html/template"
 )
 
 type GotwError struct {
@@ -28,9 +30,44 @@ func main() {
 		}()
 	*/
 
+	//wait(twt)
+
+	http.HandleFunc("/",handler)
+	http.HandleFunc("/rain.json",rainHandler)
+
+	http.Handle("/static/", http.StripPrefix("/static/",http.FileServer(http.Dir("static"))))
+	http.ListenAndServe("localhost:4000", nil)
+}
+
+func rainHandler(w http.ResponseWriter,r *http.Request) {
+
+	twt := getTwitter()
+	tweets,err := twt.SearchAOA("雨")
+	if err != nil {
+		panic(err)
+	}
+
+	var jsonTweet []twitter.TweetObject
+	for _, tweet := range tweets {
+		if tweet.Geo.Coordinates[0] != 0.0 {
+			jsonTweet = append(jsonTweet,tweet)
+		}
+	}
+
+	bits, err := json.Marshal(jsonTweet);
+	w.Write(bits)
+}
+
+func handler(w http.ResponseWriter,r *http.Request) {
+
 	twt := getTwitter()
 	setAccessToken(twt)
-	wait(twt)
+
+	t,err:= template.ParseFiles("template/tweet.html")
+	if err != nil {
+		panic(err)
+	}
+	t.Execute(w, nil)
 }
 
 /*
