@@ -63,7 +63,7 @@ func handler(w http.ResponseWriter,r *http.Request) {
 	twt := getTwitter()
 	setAccessToken(twt)
 
-	t,err:= template.ParseFiles("template/tweet.html")
+	t,err:= template.ParseFiles("template/index.html")
 	if err != nil {
 		panic(err)
 	}

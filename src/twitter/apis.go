@@ -153,7 +153,6 @@ func (this *Twitter) SearchAOA(word string) ([]TweetObject, error) {
 	if err != nil {
 		return nil, err
 	}
-	ioutil.WriteFile("searchData", data, 0666)
 
 	//検索用のオブジェクト
 	var tweets SearchObjects
