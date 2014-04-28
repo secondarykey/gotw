@@ -45,10 +45,17 @@ $(document).ready( function() {
           marker.bindPopup(content);
         }
 
-        $.getJSON("./rain.json", function(json){
+        $('#lodingModal').modal('show')
+        $.getJSON("./rain.json", function(){
+        }).success(function(json) {
+            if ( json == null ) return;
             for ( var i = 0; i < json.length; ++i ) {
                 put(json[i])
             }
+        }).error(function(jqXHR, textStatus, errorThrown) {
+            alert(textStatus);
+        }).complete(function() {
+            $('#lodingModal').modal('hide')
         });
 });
 

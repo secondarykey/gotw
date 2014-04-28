@@ -3,10 +3,12 @@ package twitter
 import (
 	"fmt"
 	"github.com/secondarykey/golib/oauth"
+	"github.com/secondarykey/golib/web"
 )
 
 type Twitter struct {
 	oauth *oauth.OAuth1
+	param *web.Parameter
 }
 
 func Usage() {
@@ -22,6 +24,7 @@ func NewTwitter(key string, secret string) *Twitter {
 	)
 	return &Twitter{
 		oauth: oa,
+		param: web.NewParameter(),
 	}
 }
 

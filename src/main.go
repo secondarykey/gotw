@@ -7,12 +7,12 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"twitter"
 	"github.com/secondarykey/golib/oauth"
+	"io/ioutil"
 	"strings"
 	"net/http"
 	"html/template"
+	"twitter"
 )
 
 type GotwError struct {
@@ -55,6 +55,9 @@ func rainHandler(w http.ResponseWriter,r *http.Request) {
 	}
 
 	bits, err := json.Marshal(jsonTweet);
+	if err != nil {
+		panic(err)
+	}
 	w.Write(bits)
 }
 
@@ -100,7 +103,7 @@ func setAccessToken(t *twitter.Twitter) {
 		fmt.Scanln(&verificationCode)
 
 		t.GetAccessToken(verificationCode)
-		writeJson(t.GetToken(),"access.json")
+		writeJson(t.GetToken(), "access.json")
 	} else {
 		t.SetAccessToken(&tokenSet)
 	}
@@ -126,9 +129,7 @@ func cmd(t *twitter.Twitter, cmd string) bool {
 		}
 	case cmd == "q":
 		return false
-
-	case strings.HasPrefix(cmd,"search ") == true:
-
+	case strings.HasPrefix(cmd, "search "):
 		word := cmd[7:]
 		tweets, err := t.SearchAOA(word)
 		if err != nil {
@@ -136,8 +137,9 @@ func cmd(t *twitter.Twitter, cmd string) bool {
 		} else {
 			printTweet(tweets)
 		}
+
 	default:
-		fmt.Print("Sending status?[Y/n]:")
+		fmt.Printf("[%s] Sending status?[Y/n]:", cmd)
 		ans := ""
 		fmt.Scanln(&ans)
 		if ans == "Y" {
@@ -164,14 +166,30 @@ func wait(t *twitter.Twitter) {
 	cmd(t, "timeline")
 	for {
 		fmt.Print("> ")
-		command := ""
-		fmt.Scanln(&command)
-		end := cmd(t, command)
+
+		buf := input()
+
+		end := cmd(t, buf)
 		if end == false {
 			break
 		}
 	}
 	fmt.Println("Bye!")
+}
+
+func input() string {
+	command1 := ""
+	command2 := ""
+	command3 := ""
+	command4 := ""
+	command5 := ""
+	cmds := []*string{&command1, &command2, &command3, &command4, &command5}
+	n, _ := fmt.Scanln(&command1, &command2, &command3, &command4, &command5)
+	buf := command1
+	for i := 1 ; i < n ; i++ {
+		buf += " " + *cmds[i]
+	}
+	return buf
 }
 
 /*

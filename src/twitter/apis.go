@@ -55,9 +55,9 @@ type SearchMetadata struct {
   ユーザ情報のType
 */
 type UserObject struct {
-	Id_str      string
-	Name        string
-	Screen_name string
+	Id_str            string
+	Name              string
+	Screen_name       string
 	Profile_image_url string
 }
 
@@ -74,17 +74,11 @@ func (this *Twitter) GetTimeline() ([]TweetObject, error) {
 	}
 	defer response.Body.Close()
 
-	bits, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return nil, err
-	}
-
 	var tweets []TweetObject
-	err = json.Unmarshal(bits, &tweets)
+	err = web.ReadJson(response,tweets)
 	if err != nil {
 		return nil, err
 	}
-
 	return tweets, nil
 }
 
@@ -92,14 +86,22 @@ func (this *Twitter) GetTimeline() ([]TweetObject, error) {
   ステータス更新API呼び出し
 */
 func (this *Twitter) Update(status string) error {
-	_, err := this.oauth.Post(
+
+	resp, err := this.oauth.Post(
 		"https://api.twitter.com/1.1/statuses/update.json",
 		map[string]string{
-			"status": status,
-		})
+		"status": status,
+	})
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
+	var tweets TweetObject
+	err = web.ReadJson(response,tweets)
+	if err != nil {
+		return nil, err
+	}
+
 	return nil
 }
 
@@ -139,28 +141,19 @@ func (this *Twitter) SearchAOA(word string) ([]TweetObject, error) {
 	wb = web.NewWeb()
 	wb.AddHeader("Authorization", "Bearer "+at.Access_Token)
 	wb.AddParam("count", "100")
-	//wb.AddParam("screen_name", "secondarykey")
 	wb.AddParam("q", word)
 
-	wb.AddParam("geocode", "38,138,500km")
 	result, err := wb.Get(url)
 	if err != nil {
 		return nil, err
 	}
 	defer result.Body.Close()
 
-	data, err := ioutil.ReadAll(result.Body)
-	if err != nil {
-		return nil, err
-	}
-
 	//検索用のオブジェクト
 	var tweets SearchObjects
-	//取得する
-	err = json.Unmarshal(data, &tweets)
+	err = web.ReadJson(result, &tweets)
 	if err != nil {
 		return nil, err
 	}
-
 	return tweets.Statuses, nil
 }
