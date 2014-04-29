@@ -9,10 +9,10 @@ import (
 	"fmt"
 	"github.com/secondarykey/golib/oauth"
 	"io/ioutil"
-	"strings"
 	"net/http"
 	"html/template"
 	"twitter"
+	"strconv"
 )
 
 type GotwError struct {
@@ -32,26 +32,64 @@ func main() {
 
 	//wait(twt)
 
-	http.HandleFunc("/",handler)
-	http.HandleFunc("/rain.json",rainHandler)
+	http.HandleFunc("/", handler)
+	http.HandleFunc("/rain.json", rainHandler)
 
-	http.Handle("/static/", http.StripPrefix("/static/",http.FileServer(http.Dir("static"))))
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 	http.ListenAndServe("localhost:4000", nil)
 }
 
-func rainHandler(w http.ResponseWriter,r *http.Request) {
+func rainHandler(w http.ResponseWriter, r *http.Request) {
 
 	twt := getTwitter()
-	tweets,err := twt.SearchAOA("雨")
+	token,err := twt.GetAOAToken()
+	if err != nil {
+		panic(err)
+	}
+
+	word:="アメ"
+	twt.AddParam("count", "100")
+	so, err := twt.SearchAOA(token,word)
 	if err != nil {
 		panic(err)
 	}
 
 	var jsonTweet []twitter.TweetObject
-	for _, tweet := range tweets {
-		if tweet.Geo.Coordinates[0] != 0.0 {
-			jsonTweet = append(jsonTweet,tweet)
+	maxid := int64(0)
+	tCnt := 0
+	pCnt := 0
+	for {
+		fmt.Println("ループ " + strconv.FormatInt(int64(len(jsonTweet)),10))
+		if so == nil || len(so.Statuses) <= 0 {
+			fmt.Println("終了")
+			break
 		}
+		for _, tweet := range so.Statuses {
+			tCnt++
+
+			if maxid==0 || tweet.Id < maxid {
+				maxid = tweet.Id
+			}
+
+			if tweet.Geo.Coordinates[0] != 0.0 {
+				jsonTweet = append(jsonTweet, tweet)
+			}
+
+			if tweet.User.Location != "" {
+				pCnt++
+				fmt.Println(tweet.User.Location)
+			}
+		}
+
+		if len(jsonTweet) >= 100 {
+			break
+		}
+
+		fmt.Printf("T:%d,Location=%d",tCnt,pCnt)
+
+		twt.AddParam("max_id", strconv.FormatInt(maxid,10))
+		twt.AddParam("count", "100")
+		so, err = twt.SearchAOA(token,word)
 	}
 
 	bits, err := json.Marshal(jsonTweet);
@@ -61,12 +99,12 @@ func rainHandler(w http.ResponseWriter,r *http.Request) {
 	w.Write(bits)
 }
 
-func handler(w http.ResponseWriter,r *http.Request) {
+func handler(w http.ResponseWriter, r *http.Request) {
 
 	twt := getTwitter()
 	setAccessToken(twt)
 
-	t,err:= template.ParseFiles("template/index.html")
+	t, err := template.ParseFiles("template/index.html")
 	if err != nil {
 		panic(err)
 	}
@@ -108,88 +146,6 @@ func setAccessToken(t *twitter.Twitter) {
 		t.SetAccessToken(&tokenSet)
 	}
 	return
-}
-
-/*
- * コマンドに応じた処理を行う
- */
-func cmd(t *twitter.Twitter, cmd string) bool {
-
-	if cmd == "" {
-		return true
-	}
-
-	switch {
-	case cmd == "timeline":
-		tweets, err := t.GetTimeline()
-		if err != nil {
-			fmt.Println(err)
-		} else {
-			printTweet(tweets)
-		}
-	case cmd == "q":
-		return false
-	case strings.HasPrefix(cmd, "search "):
-		word := cmd[7:]
-		tweets, err := t.SearchAOA(word)
-		if err != nil {
-			fmt.Println(err)
-		} else {
-			printTweet(tweets)
-		}
-
-	default:
-		fmt.Printf("[%s] Sending status?[Y/n]:", cmd)
-		ans := ""
-		fmt.Scanln(&ans)
-		if ans == "Y" {
-			err := t.Update(cmd)
-			if err != nil {
-				fmt.Println(err)
-			}
-		}
-	}
-	return true
-}
-
-func printTweet(tweets []twitter.TweetObject) {
-	for _, tweet := range tweets {
-		fmt.Println(tweet.User.Name, tweet.User.Screen_name, tweet.Created_at, "------")
-		fmt.Println(tweet.Text)
-	}
-}
-
-/*
- * コマンドの永久ループ
- */
-func wait(t *twitter.Twitter) {
-	cmd(t, "timeline")
-	for {
-		fmt.Print("> ")
-
-		buf := input()
-
-		end := cmd(t, buf)
-		if end == false {
-			break
-		}
-	}
-	fmt.Println("Bye!")
-}
-
-func input() string {
-	command1 := ""
-	command2 := ""
-	command3 := ""
-	command4 := ""
-	command5 := ""
-	cmds := []*string{&command1, &command2, &command3, &command4, &command5}
-	n, _ := fmt.Scanln(&command1, &command2, &command3, &command4, &command5)
-	buf := command1
-	for i := 1 ; i < n ; i++ {
-		buf += " " + *cmds[i]
-	}
-	return buf
 }
 
 /*

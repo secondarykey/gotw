@@ -1,16 +1,14 @@
 package twitter
 
 import (
-	"encoding/base64"
-	"encoding/json"
 	"github.com/secondarykey/golib/web"
-	"io/ioutil"
 )
 
 /*
   Tweetの情報
 */
 type TweetObject struct {
+	Id                  int64
 	Created_at              string
 	Id_str                  string
 	Text                    string
@@ -18,20 +16,32 @@ type TweetObject struct {
 	In_reply_to_user_id_str string
 	User                    UserObject
 	Geo                     Geo `json:"coordinates"`
+	Place Places
 }
 
-type Geo struct {
-	Coordinates Coordinate `json:"coordinates,float"`
+type Places struct {
+	Name string
+	Bounding_box BoundingBox
+}
+
+type BoundingBox struct {
+	Coordinates [][]Polygon `json:"coordinates,float"`
 	Type        string
 }
 
-type Coordinate [2]CoordType
+type Geo struct {
+	Coordinates Point `json:"coordinates,float"`
+	Type        string
+}
+
+type Polygon [4]CoordType
+type Point   [2]CoordType
 type CoordType float64
 
 /*
  検索時のデータType
 */
-type SearchObjects struct {
+type SearchObject struct {
 	Statuses        []TweetObject
 	Search_metadata SearchMetadata
 }
@@ -59,15 +69,18 @@ type UserObject struct {
 	Name              string
 	Screen_name       string
 	Profile_image_url string
+	Location string
 }
 
 /*
   タイムラインの取得
 */
 func (this *Twitter) GetTimeline() ([]TweetObject, error) {
+
+	args := this.getArgs()
 	response, err := this.oauth.Get(
 		"https://api.twitter.com/1.1/statuses/home_timeline.json",
-		map[string]string{"count": "10"})
+		args)
 
 	if err != nil {
 		return nil, err
@@ -82,78 +95,29 @@ func (this *Twitter) GetTimeline() ([]TweetObject, error) {
 	return tweets, nil
 }
 
+func (this *Twitter) getArgs() map[string]string {
+	args := make(map[string]string)
+	for _,key := range this.param.Keys() {
+		args[key] = this.param.Get(key)
+	}
+	return args
+}
+
 /*
   ステータス更新API呼び出し
 */
 func (this *Twitter) Update(status string) error {
 
+	this.AddParam("status",status)
+	args := this.getArgs()
 	resp, err := this.oauth.Post(
 		"https://api.twitter.com/1.1/statuses/update.json",
-		map[string]string{
-		"status": status,
-	})
+		args)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 	var tweets TweetObject
-	err = web.ReadJson(response,tweets)
-	if err != nil {
-		return nil, err
-	}
-
-	return nil
+	return web.ReadJson(resp,tweets)
 }
 
-/*
-  Application-only auth の戻り値
-*/
-type AccessTokenAOA struct {
-	Token_Type   string
-	Access_Token string
-}
-
-/*
-  Application-only Auth 用の検索
-*/
-func (this *Twitter) SearchAOA(word string) ([]TweetObject, error) {
-
-	url := "https://api.twitter.com/oauth2/token"
-
-	key := this.oauth.ConsumerKey + ":" + this.oauth.ConsumerSecret
-	base64 := base64.StdEncoding.EncodeToString([]byte(key))
-
-	wb := web.NewWeb()
-	wb.AddHeader("Authorization", "Basic "+base64)
-	wb.AddParam("grant_type", "client_credentials")
-
-	resp, err := wb.Post(url)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	bits, err := ioutil.ReadAll(resp.Body)
-	at := AccessTokenAOA{}
-	err = json.Unmarshal(bits, &at)
-
-	url = "https://api.twitter.com/1.1/search/tweets.json"
-	wb = web.NewWeb()
-	wb.AddHeader("Authorization", "Bearer "+at.Access_Token)
-	wb.AddParam("count", "100")
-	wb.AddParam("q", word)
-
-	result, err := wb.Get(url)
-	if err != nil {
-		return nil, err
-	}
-	defer result.Body.Close()
-
-	//検索用のオブジェクト
-	var tweets SearchObjects
-	err = web.ReadJson(result, &tweets)
-	if err != nil {
-		return nil, err
-	}
-	return tweets.Statuses, nil
-}

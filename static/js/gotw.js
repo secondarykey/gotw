@@ -41,6 +41,9 @@ $(document).ready( function() {
           '</div>' +
           '<div class="row">' +
           tweet.Text +
+          '</div>' +
+          '<div class="row">' +
+          tweet.Created_at +
           '</div>';
           marker.bindPopup(content);
         }

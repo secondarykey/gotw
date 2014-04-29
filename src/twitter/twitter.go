@@ -33,6 +33,10 @@ func (this *Twitter) SetRequestTokenAndUrl(callback string) {
 	return
 }
 
+func (this *Twitter) AddParam(key,value string) {
+	this.param.Add(key,value)
+}
+
 func (this *Twitter) GetAuthorizationUrl() string {
 	return this.oauth.AuthroizeUrl
 }
