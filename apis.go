@@ -1,4 +1,4 @@
-package twitter
+package main
 
 import (
 	"encoding/json"
@@ -20,23 +20,25 @@ type UserObject struct {
 	Screen_name string
 }
 
-func (this *Twitter) GetTimeline() []TweetObject {
-	response, err := this.oauth.Get(
+func (this *Twitter) GetTimeline() ([]TweetObject, error) {
+
+	resp, err := this.oauth.Get(
 		"https://api.twitter.com/1.1/statuses/home_timeline.json",
 		map[string]string{"count": "10"})
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	defer response.Body.Close()
 
-	bits, err := ioutil.ReadAll(response.Body)
+	defer resp.Body.Close()
+
+	bits, err := ioutil.ReadAll(resp.Body)
 	var tweets []TweetObject
-	err2 := json.Unmarshal(bits, &tweets)
-	if err2 != nil {
-		panic(err2)
+	err = json.Unmarshal(bits, &tweets)
+	if err != nil {
+		return nil, err
 	}
 
-	return tweets
+	return tweets, nil
 }
 
 func (this *Twitter) Update(status string) {

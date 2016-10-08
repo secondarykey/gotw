@@ -1,12 +1,12 @@
-package web
+package main
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 	"sort"
 	"strconv"
 	"strings"
-	"fmt"
 )
 
 /*
@@ -14,7 +14,7 @@ import (
 type Web struct {
 	contentType string
 	header      http.Header
-	params *parameter
+	params      *parameter
 }
 
 /*
@@ -44,7 +44,7 @@ type HttpError struct {
  */
 func (self HttpError) Error() string {
 	return strconv.Itoa(self.statusCode) + ":\n" +
-			self.status
+		self.status
 }
 
 /*
@@ -52,9 +52,9 @@ func (self HttpError) Error() string {
  */
 func NewWeb() *Web {
 	return &Web{
-		params: NewParameter(),
-		header: http.Header{},
-		contentType:"",
+		params:      NewParameter(),
+		header:      http.Header{},
+		contentType: "",
 	}
 }
 
@@ -127,7 +127,7 @@ func (self *Web) getQuery() string {
 	sep := ""
 	for _, key := range params {
 		value := self.params.get(key)
-		ret += sep+key+"="+value
+		ret += sep + key + "=" + value
 		sep = "&"
 	}
 	return ret
@@ -138,7 +138,7 @@ func (self *Web) getQuery() string {
 func (self *Web) Get(url string) (*http.Response, error) {
 	q := self.getQuery()
 	if q != "" {
-		q += "?" + q
+		q = "?" + q
 	}
 	return self.execute("GET", url+q, "")
 }
@@ -154,6 +154,7 @@ func (self *Web) Post(url string) (*http.Response, error) {
  */
 func (self *Web) execute(method string, url string, body string) (*http.Response, error) {
 
+	fmt.Println(url)
 	req, reqErr := http.NewRequest(method, url, strings.NewReader(body))
 	if reqErr != nil {
 		return nil, reqErr
@@ -161,7 +162,6 @@ func (self *Web) execute(method string, url string, body string) (*http.Response
 
 	//ヘッダの設定
 	req.Header = self.header
-	fmt.Println(self.header)
 	if self.contentType != "" {
 		req.Header.Set("Content-Type", self.contentType)
 	}
