@@ -4,6 +4,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha1"
 	"encoding/base64"
+	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
@@ -12,17 +13,15 @@ import (
 	"time"
 )
 
-/*
- */
 type OAuth struct {
 	Credential *Credential
 
-	RequestTokenUrl   string
-	AuthroizeTokenUrl string
-	AccessTokenUrl    string
+	requestTokenUrl string
+	authorizeUrl    string
+	accessTokenUrl  string
 
-	RequestToken *TokenSet
-	AuthroizeUrl string
+	requestToken  string
+	requestSecret string
 
 	authParams *parameter
 }
@@ -34,8 +33,6 @@ type Credential struct {
 	AccessSecret   string
 }
 
-/*
- */
 const (
 	OAUTH_VERSION    = "1.0"
 	SIGNATURE_METHOD = "HMAC-SHA1"
@@ -53,17 +50,16 @@ const (
 	VERSION_PARAM          = "oauth_version"
 )
 
-/*
- */
-type TokenSet struct {
-	Token  string
-	Secret string
+func NewOAuth(c *Credential, request, authorize, access string) *OAuth {
+	oa := &OAuth{
+		Credential:      c,
+		requestTokenUrl: request,
+		authorizeUrl:    authorize,
+		accessTokenUrl:  access,
+	}
+	return oa
 }
 
-/*
- * リクエストトークンの取得を行う
- *
- */
 func (o *OAuth) GetRequestToken(callback string) error {
 
 	wb := NewWeb()
@@ -71,12 +67,12 @@ func (o *OAuth) GetRequestToken(callback string) error {
 	o.addParam(CALLBACK_PARAM, callback)
 
 	key := escape(o.Credential.ConsumerSecret) + "&" + escape("")
-	base := o.requestString("GET", o.RequestTokenUrl, o.authParams)
+	base := o.requestString("GET", o.requestTokenUrl, o.authParams)
 	sign := o.sign(base, key)
 
 	o.addParam(SIGNATURE_PARAM, sign)
 
-	data, err := o.getBody(wb, o.RequestTokenUrl)
+	data, err := o.getBody(wb, o.requestTokenUrl)
 	if err != nil {
 		return err
 	}
@@ -84,10 +80,14 @@ func (o *OAuth) GetRequestToken(callback string) error {
 	token := data[TOKEN_PARAM]
 	secret := data[TOKEN_SECRET_PARAM]
 
-	o.RequestToken = &TokenSet{token[0], secret[0]}
+	o.requestToken = token[0]
+	o.requestSecret = secret[0]
 
-	o.AuthroizeUrl = o.AuthroizeTokenUrl + "?" + TOKEN_PARAM + "=" + escape(token[0])
 	return nil
+}
+
+func (o *OAuth) GetAuthorizeURL() string {
+	return o.authorizeUrl + "?" + TOKEN_PARAM + "=" + escape(o.requestToken)
 }
 
 func (o *OAuth) requestString(method string, url string, args *parameter) string {
@@ -128,20 +128,20 @@ func (o *OAuth) addBaseParams() {
 }
 
 func (o *OAuth) getBody(wb *Web, accessUrl string) (map[string][]string, error) {
+
 	wb.header.Add("Authorization", o.getOAuthHeader())
 
 	resp, err := wb.Get(accessUrl)
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 
 	bodyByte, err := ioutil.ReadAll(resp.Body)
-	resp.Body.Close()
 	if err != nil {
 		return nil, err
 	}
 
-	//レスポンスを取得してコードを取得
 	body := string(bodyByte)
 	parts, err := url.ParseQuery(body)
 	if err != nil {
@@ -156,15 +156,15 @@ func (o *OAuth) GetAccessToken(code string) error {
 	o.addBaseParams()
 
 	o.addParam(VERIFIER_PARAM, code)
-	o.addParam(TOKEN_PARAM, o.RequestToken.Token)
+	o.addParam(TOKEN_PARAM, o.requestToken)
 
-	key := escape(o.Credential.ConsumerSecret) + "&" + escape(o.RequestToken.Secret)
-	base := o.requestString("GET", o.AccessTokenUrl, o.authParams)
+	key := escape(o.Credential.ConsumerSecret) + "&" + escape(o.requestSecret)
+	base := o.requestString("GET", o.accessTokenUrl, o.authParams)
 	sign := o.sign(base, key)
 
 	o.addParam(SIGNATURE_PARAM, sign)
 
-	data, err := o.getBody(wb, o.AccessTokenUrl)
+	data, err := o.getBody(wb, o.accessTokenUrl)
 	if err != nil {
 		return err
 	}
@@ -179,16 +179,30 @@ func (o *OAuth) GetAccessToken(code string) error {
 }
 
 func (o *OAuth) Get(url string, args map[string]string) (*http.Response, error) {
-	wb := o.createOAuthWeb("GET", url, args)
+	wb, err := o.createOAuthParameter("GET", url, args)
+	if err != nil {
+		return nil, err
+	}
 	return wb.Get(url)
 }
 
 func (o *OAuth) Post(url string, args map[string]string) (*http.Response, error) {
-	wb := o.createOAuthWeb("POST", url, args)
+	wb, err := o.createOAuthParameter("POST", url, args)
+	if err != nil {
+		return nil, err
+	}
 	return wb.Post(url)
 }
 
-func (o *OAuth) createOAuthWeb(method string, url string, args map[string]string) *Web {
+func (o *OAuth) createOAuthParameter(method string, url string, args map[string]string) (*Web, error) {
+
+	if o.Credential.ConsumerKey == "" || o.Credential.ConsumerSecret == "" {
+		return nil, fmt.Errorf("CustomerKey,Secret is empty!")
+	}
+
+	if o.Credential.AccessToken == "" || o.Credential.AccessSecret == "" {
+		return nil, fmt.Errorf("AccessToken,Secret is empty!")
+	}
 
 	o.addBaseParams()
 	o.addParam(TOKEN_PARAM, o.Credential.AccessToken)
@@ -197,9 +211,7 @@ func (o *OAuth) createOAuthWeb(method string, url string, args map[string]string
 	wb := NewWeb()
 	if args != nil {
 		for key, value := range args {
-			//Web側の引数に追加
 			wb.AddParam(key, value)
-			//ベースの方にも追加
 			param.add(key, value)
 		}
 	}
@@ -211,7 +223,8 @@ func (o *OAuth) createOAuthWeb(method string, url string, args map[string]string
 	o.addParam(SIGNATURE_PARAM, sign)
 
 	wb.header.Add("Authorization", o.getOAuthHeader())
-	return wb
+
+	return wb, nil
 }
 
 func (o *OAuth) addParam(key, value string) {

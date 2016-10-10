@@ -9,47 +9,21 @@ import (
 	"strings"
 )
 
-/*
- */
 type Web struct {
 	contentType string
 	header      http.Header
 	params      *parameter
 }
 
-/*
- */
 type parameter struct {
 	param map[string]string
 	order []string
 }
 
-/*
- * URLエスケープ
- */
 func escape(param string) string {
 	return url.QueryEscape(param)
 }
 
-/*
- * HTTP エラーコード
- */
-type HttpError struct {
-	status     string
-	statusCode int
-}
-
-/*
- * エラー実装
- */
-func (self HttpError) Error() string {
-	return strconv.Itoa(self.statusCode) + ":\n" +
-		self.status
-}
-
-/*
- * Webインスタンスの生成
- */
 func NewWeb() *Web {
 	return &Web{
 		params:      NewParameter(),
@@ -58,18 +32,10 @@ func NewWeb() *Web {
 	}
 }
 
-/*
- * パラメータの追加
- */
-func (self *Web) AddParam(key, value string) {
-	self.params.add(key, value)
+func (w *Web) AddParam(key, value string) {
+	w.params.add(key, value)
 }
 
-/*
- * パラメータ用のType
- * paramは保存場所
- * orderは引数のソート用に使用する
- */
 func NewParameter() *parameter {
 	return &parameter{
 		param: make(map[string]string),
@@ -77,93 +43,69 @@ func NewParameter() *parameter {
 	}
 }
 
-/*
- * 引数の追加を行う
- */
-func (self *parameter) add(key, value string) {
-	self.addUnEscape(key, escape(value))
+func (p *parameter) add(key, value string) {
+	p.addUnEscape(key, escape(value))
 }
 
-/*
- * addのエスケープをしない場合の呼び出し
- * 通常copyの時しか使わない
- */
-func (self *parameter) addUnEscape(key, value string) {
-	if _, flag := self.param[key]; !flag {
-		self.param[key] = value
-		self.order = append(self.order, key)
+func (p *parameter) addUnEscape(key, value string) {
+	if _, flag := p.param[key]; !flag {
+		p.param[key] = value
+		p.order = append(p.order, key)
 	}
 }
 
-/*
- * 値の取得
- */
-func (self *parameter) get(key string) string {
-	return self.param[key]
+func (p *parameter) get(key string) string {
+	return p.param[key]
 }
 
-/*
- * 新規にparameterを生成して、自身のコピーをする
- */
-func (self *parameter) copy() *parameter {
+func (p *parameter) copy() *parameter {
 	clone := NewParameter()
-	for _, key := range self.keys() {
-		clone.addUnEscape(key, self.get(key))
+	for _, key := range p.keys() {
+		clone.addUnEscape(key, p.get(key))
 	}
 	return clone
 }
 
-/*
- * キーの取り出しsort.Strings()でソートしてから返す
- */
-func (self *parameter) keys() []string {
-	sort.Strings(self.order)
-	return self.order
+func (p *parameter) keys() []string {
+	sort.Strings(p.order)
+	return p.order
 }
 
-func (self *Web) getQuery() string {
-	params := self.params.keys()
+func (w *Web) getQuery() string {
+	params := w.params.keys()
 	ret := ""
 	sep := ""
 	for _, key := range params {
-		value := self.params.get(key)
+		value := w.params.get(key)
 		ret += sep + key + "=" + value
 		sep = "&"
 	}
 	return ret
 }
 
-/*
- */
-func (self *Web) Get(url string) (*http.Response, error) {
-	q := self.getQuery()
+func (w *Web) Get(url string) (*http.Response, error) {
+	q := w.getQuery()
 	if q != "" {
 		q = "?" + q
 	}
-	return self.execute("GET", url+q, "")
+	return w.execute("GET", url+q, "")
 }
 
-/*
- */
-func (self *Web) Post(url string) (*http.Response, error) {
-	self.contentType = "application/x-www-form-urlencoded"
-	return self.execute("POST", url, self.getQuery())
+func (w *Web) Post(url string) (*http.Response, error) {
+	w.contentType = "application/x-www-form-urlencoded"
+	return w.execute("POST", url, w.getQuery())
 }
 
-/*
- */
-func (self *Web) execute(method string, url string, body string) (*http.Response, error) {
+func (w *Web) execute(method string, url string, body string) (*http.Response, error) {
 
-	fmt.Println(url)
 	req, reqErr := http.NewRequest(method, url, strings.NewReader(body))
 	if reqErr != nil {
 		return nil, reqErr
 	}
 
-	//ヘッダの設定
-	req.Header = self.header
-	if self.contentType != "" {
-		req.Header.Set("Content-Type", self.contentType)
+	req.Header = w.header
+	if w.contentType != "" {
+		req.Header.Set("Content-Type", w.contentType)
 	}
 	req.Header.Set("Content-Length", strconv.Itoa(len(body)))
 
@@ -176,10 +118,8 @@ func (self *Web) execute(method string, url string, body string) (*http.Response
 	if resp.StatusCode < http.StatusOK ||
 		resp.StatusCode >= http.StatusMultipleChoices {
 		defer resp.Body.Close()
-		return nil, HttpError{
-			status:     resp.Status,
-			statusCode: resp.StatusCode,
-		}
+		return nil, fmt.Errorf("[%d]%s", resp.StatusCode, resp.Status)
 	}
+
 	return resp, doErr
 }

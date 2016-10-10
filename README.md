@@ -6,3 +6,5 @@ gotw is Twitter Cllient
 "ConsumerSecret" : "[your twitter app consumer secret]"
 }
 ```
+
+go run *.go
