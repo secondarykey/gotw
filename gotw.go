@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"sort"
 	"time"
 )
@@ -14,11 +15,12 @@ func main() {
 
 	defer func() {
 		if err := recover(); err != nil {
-			fmt.Println(err)
+			fmt.Println("Panic!!!", err)
+			os.Exit(-1)
 		}
 	}()
 
-	twt, err := getTwitter()
+	twt, err := createTwitterInformation()
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -54,7 +56,7 @@ func main() {
 	wait(twt)
 }
 
-func getTwitter() (*Twitter, error) {
+func createTwitterInformation() (*Twitter, error) {
 
 	c := Credential{}
 	err := read(&c)
@@ -91,6 +93,7 @@ func setAccessToken(t *Twitter) error {
 	if err != nil {
 		return err
 	}
+
 	return write(t.OAuth.Credential)
 }
 

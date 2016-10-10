@@ -67,7 +67,7 @@ func (t *Twitter) GetTimeline(id int) (TweetList, error) {
 		"https://api.twitter.com/1.1/statuses/home_timeline.json",
 		arg)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Twitter get Error:%s", err)
 	}
 
 	defer resp.Body.Close()
@@ -76,7 +76,7 @@ func (t *Twitter) GetTimeline(id int) (TweetList, error) {
 	var tweets TweetList
 	err = json.Unmarshal(bits, &tweets)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("JSON Unmarshal Error:%s", err)
 	}
 
 	return tweets, nil
@@ -88,8 +88,7 @@ func (t *Twitter) Update(status string) error {
 		map[string]string{
 			"status": status,
 		})
-	defer resp.Body.Close()
-	return err
+	return fmt.Errorf("Twitter get Error:%s", err)
 }
 
 func (t *Twitter) Search(word string, maxId int) error {
@@ -109,7 +108,7 @@ func (t *Twitter) Search(word string, maxId int) error {
 	var data interface{}
 	err = json.Unmarshal(bits, &data)
 	if err != nil {
-		return err
+		return fmt.Errorf("JSON Unmarshal Error:%s", err)
 	}
 
 	fmt.Println(data)

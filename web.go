@@ -98,9 +98,9 @@ func (w *Web) Post(url string) (*http.Response, error) {
 
 func (w *Web) execute(method string, url string, body string) (*http.Response, error) {
 
-	req, reqErr := http.NewRequest(method, url, strings.NewReader(body))
-	if reqErr != nil {
-		return nil, reqErr
+	req, err := http.NewRequest(method, url, strings.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("Create Request Error:%s", err)
 	}
 
 	req.Header = w.header
@@ -110,16 +110,16 @@ func (w *Web) execute(method string, url string, body string) (*http.Response, e
 	req.Header.Set("Content-Length", strconv.Itoa(len(body)))
 
 	client := &http.Client{}
-	resp, doErr := client.Do(req)
-	if doErr != nil {
-		return nil, doErr
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
 	}
 
 	if resp.StatusCode < http.StatusOK ||
 		resp.StatusCode >= http.StatusMultipleChoices {
 		defer resp.Body.Close()
-		return nil, fmt.Errorf("[%d]%s", resp.StatusCode, resp.Status)
+		return nil, fmt.Errorf("StatusError[%d]%s", resp.StatusCode, resp.Status)
 	}
 
-	return resp, doErr
+	return resp, nil
 }

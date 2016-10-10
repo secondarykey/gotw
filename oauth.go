@@ -74,7 +74,7 @@ func (o *OAuth) GetRequestToken(callback string) error {
 
 	data, err := o.getBody(wb, o.requestTokenUrl)
 	if err != nil {
-		return err
+		return fmt.Errorf("getBody Error:%s", err)
 	}
 
 	token := data[TOKEN_PARAM]
@@ -133,13 +133,13 @@ func (o *OAuth) getBody(wb *Web, accessUrl string) (map[string][]string, error) 
 
 	resp, err := wb.Get(accessUrl)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Web Get Error:%s", err)
 	}
 	defer resp.Body.Close()
 
 	bodyByte, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Response Read Error:%s", err)
 	}
 
 	body := string(bodyByte)
@@ -166,7 +166,7 @@ func (o *OAuth) GetAccessToken(code string) error {
 
 	data, err := o.getBody(wb, o.accessTokenUrl)
 	if err != nil {
-		return err
+		return fmt.Errorf("getBody Error:%s", err)
 	}
 
 	token := data[TOKEN_PARAM]
@@ -181,7 +181,7 @@ func (o *OAuth) GetAccessToken(code string) error {
 func (o *OAuth) Get(url string, args map[string]string) (*http.Response, error) {
 	wb, err := o.createOAuthParameter("GET", url, args)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Create OAuth Paramerter Error:%s", err)
 	}
 	return wb.Get(url)
 }
@@ -189,7 +189,7 @@ func (o *OAuth) Get(url string, args map[string]string) (*http.Response, error) 
 func (o *OAuth) Post(url string, args map[string]string) (*http.Response, error) {
 	wb, err := o.createOAuthParameter("POST", url, args)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Create OAuth Paramerter Error:%s", err)
 	}
 	return wb.Post(url)
 }
