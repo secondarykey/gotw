@@ -52,22 +52,25 @@ func (t TweetList) Less(i, j int) bool {
 	return t[i].Id < t[j].Id
 }
 
-func (t *Twitter) GetTimeline(id int) (TweetList, error) {
+func (t *Twitter) GetTimeline(id int64) (TweetList, error) {
 
-	count := "20"
+	count := "10"
 	if id != 0 {
 		count = "100"
 	}
+
 	arg := map[string]string{"count": count}
 	if id != 0 {
 		arg["since_id"] = fmt.Sprintf("%d", id)
 	}
 
+	fmt.Println(arg)
+
 	resp, err := t.Get(
 		"https://api.twitter.com/1.1/statuses/home_timeline.json",
 		arg)
 	if err != nil {
-		return nil, fmt.Errorf("Twitter get Error:%s", err)
+		return nil, fmt.Errorf("TwitterAPI Timeline Error:%s", err)
 	}
 
 	defer resp.Body.Close()

@@ -99,7 +99,7 @@ func setAccessToken(t *Twitter) error {
 
 func drawTimeline(t *Twitter) error {
 
-	tweets, err := t.GetTimeline(int(maxId))
+	tweets, err := t.GetTimeline(maxId)
 	if err != nil {
 		fmt.Println("Error:" + err.Error())
 		return err
@@ -118,14 +118,13 @@ func drawTimeline(t *Twitter) error {
 	//36	シアン
 	//37	白
 	for idx, tweet := range tweets {
-		fmt.Printf("%s(@%s):\n", tweet.User.Name, tweet.User.Screen_name)
+		fmt.Printf("%s(@%s) - %s\n", tweet.User.Name, tweet.User.Screen_name, changeTime(tweet.Created_at))
 		color := "\x1b[%dm%s\x1b[0m\n"
 		num := 32
 		if (idx % 2) == 1 {
 			num = 36
 		}
 		fmt.Printf(color, num, tweet.Text)
-		fmt.Printf("--- %s\n", changeTime(tweet.Created_at))
 
 		if tweet.Id > maxId {
 			maxId = tweet.Id
