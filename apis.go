@@ -64,8 +64,6 @@ func (t *Twitter) GetTimeline(id int64) (TweetList, error) {
 		arg["since_id"] = fmt.Sprintf("%d", id)
 	}
 
-	fmt.Println(arg)
-
 	resp, err := t.Get(
 		"https://api.twitter.com/1.1/statuses/home_timeline.json",
 		arg)

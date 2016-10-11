@@ -4,12 +4,19 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"sort"
 	"time"
 )
 
 var maxId int64
+var idBox map[string]*TweetObject
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+	idBox = make(map[string]*TweetObject)
+}
 
 func main() {
 
@@ -39,10 +46,12 @@ func main() {
 	}
 
 	go func() {
-		ti := time.NewTicker(60 * time.Second)
+		ti := time.NewTicker(65 * time.Second)
 		for {
 			select {
 			case <-ti.C:
+
+				fmt.Println("[reload...]")
 				err := drawTimeline(twt)
 				if err != nil {
 					fmt.Println(err)
@@ -60,6 +69,9 @@ func createTwitterInformation() (*Twitter, error) {
 
 	c := Credential{}
 	err := read(&c)
+
+	//TODO create .credential file
+
 	if err != nil {
 		return nil, fmt.Errorf("設定ファイル読み込みエラー:%s", err.Error())
 	}
@@ -109,22 +121,26 @@ func drawTimeline(t *Twitter) error {
 	}
 
 	sort.Sort(tweets)
-	//30	黒
-	//31	赤
-	//32	緑
-	//33	黄
-	//34	青
-	//35	マゼンダ
-	//36	シアン
-	//37	白
+
+	//30黒 31赤 32緑 33黄 34青 35マゼンダ 36シアン 37白
+
 	for idx, tweet := range tweets {
-		fmt.Printf("%s(@%s) - %s\n", tweet.User.Name, tweet.User.Screen_name, changeTime(tweet.Created_at))
-		color := "\x1b[%dm%s\x1b[0m\n"
+
+		t := changeTime(tweet.Created_at)
+		id := randId(&tweet)
+		l := fmt.Sprintf("%s[%s]: %s(@%s)\n", t, id, tweet.User.Name, tweet.User.Screen_name)
+
+		//
+		// 自分への返信を赤表示
+
 		num := 32
 		if (idx % 2) == 1 {
 			num = 36
 		}
-		fmt.Printf(color, num, tweet.Text)
+
+		fmt.Print(color(num, l))
+
+		fmt.Println(tweet.Text)
 
 		if tweet.Id > maxId {
 			maxId = tweet.Id
@@ -133,7 +149,16 @@ func drawTimeline(t *Twitter) error {
 	return nil
 }
 
+func color(num int, txt string) string {
+	c := "\x1b[%dm%s\x1b[0m"
+	return fmt.Sprintf(c, num, txt)
+}
+
 func cmd(t *Twitter, cmd string) bool {
+
+	// TODO add command
+	// m -> mentions ... msg???
+	//
 
 	switch cmd {
 	case "s":
@@ -164,13 +189,13 @@ func changeTime(t string) string {
 	if err != nil {
 		return err.Error()
 	}
-
 	jst, _ := time.LoadLocation("Asia/Tokyo")
 	jt := ti.In(jst)
 	return jt.Format("2006/01/02 15:04:05")
 }
 
 func wait(t *Twitter) {
+
 	for {
 		fmt.Print("> ")
 		command := ""
@@ -180,6 +205,7 @@ func wait(t *Twitter) {
 			break
 		}
 	}
+
 	fmt.Println("Bye!")
 }
 
@@ -197,4 +223,17 @@ func write(c *Credential) error {
 	} else {
 		return ioutil.WriteFile(".credential", b, 0666)
 	}
+}
+
+var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
+
+func randId(tweet *TweetObject) string {
+	b := make([]rune, 4)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	rId := string(b)
+
+	idBox[rId] = tweet
+	return rId
 }
