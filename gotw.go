@@ -1,17 +1,20 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"sort"
 	"time"
+
+	"github.com/secondarykey/golib/http"
+	"github.com/secondarykey/golib/util"
 )
 
 var maxId int64
 var idBox map[string]*TweetObject
+
+const CREDENTIAL_FILE = ".credential"
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
@@ -27,22 +30,30 @@ func main() {
 		}
 	}()
 
-	twt, err := createTwitterInformation()
+	err := run()
 	if err != nil {
 		fmt.Println(err)
-		return
+		os.Exit(1)
+	}
+
+	return
+}
+
+func run() error {
+
+	twt, err := createTwitterInformation()
+	if err != nil {
+		return err
 	}
 
 	err = setAccessToken(twt)
 	if err != nil {
-		fmt.Println(err)
-		return
+		return err
 	}
 
 	err = drawTimeline(twt)
 	if err != nil {
-		fmt.Println(err)
-		return
+		return err
 	}
 
 	go func() {
@@ -62,22 +73,28 @@ func main() {
 		ti.Stop()
 	}()
 
-	wait(twt)
+	return wait(twt)
 }
 
 func createTwitterInformation() (*Twitter, error) {
 
-	c := Credential{}
-	err := read(&c)
+	c := http.Credential{}
 
-	//TODO create .credential file
-
+	_, err := os.Stat(CREDENTIAL_FILE)
 	if err != nil {
-		return nil, fmt.Errorf("設定ファイル読み込みエラー:%s", err.Error())
+		fmt.Print("[Consumer Key]=")
+		fmt.Scanln(&c.ConsumerKey)
+		fmt.Print("[Consumer Secret]=")
+		fmt.Scanln(&c.ConsumerSecret)
+	} else {
+		err := util.ReadJsonFile(&c, CREDENTIAL_FILE)
+		if err != nil {
+			return nil, fmt.Errorf("設定ファイル読み込みエラー:%s", err.Error())
+		}
 	}
 
 	if c.ConsumerKey == "" || c.ConsumerSecret == "" {
-		return nil, fmt.Errorf(".credentialにConsumerKeyとConsumerSecretを設定してください")
+		return nil, fmt.Errorf("ConsumerKeyとConsumerSecretを設定してください")
 	}
 
 	t := NewTwitter(&c)
@@ -86,11 +103,16 @@ func createTwitterInformation() (*Twitter, error) {
 
 func setAccessToken(t *Twitter) error {
 
-	if t.OAuth.Credential.AccessToken != "" {
+	if t.OAuth1.Credential.AccessToken != "" {
 		return nil
 	}
 
 	err := t.GetRequestToken("oob")
+	if err != nil {
+		return err
+	}
+
+	err = util.WriteJsonFile(t.OAuth1.Credential, CREDENTIAL_FILE)
 	if err != nil {
 		return err
 	}
@@ -106,7 +128,7 @@ func setAccessToken(t *Twitter) error {
 		return err
 	}
 
-	return write(t.OAuth.Credential)
+	return util.WriteJsonFile(t.OAuth1.Credential, CREDENTIAL_FILE)
 }
 
 func drawTimeline(t *Twitter) error {
@@ -128,10 +150,8 @@ func drawTimeline(t *Twitter) error {
 
 		t := changeTime(tweet.Created_at)
 		id := randId(&tweet)
-		l := fmt.Sprintf("%s[%s]: %s(@%s)\n", t, id, tweet.User.Name, tweet.User.Screen_name)
 
-		//
-		// 自分への返信を赤表示
+		l := fmt.Sprintf("%s[%s]: %s(@%s)\n", t, id, tweet.User.Name, tweet.User.Screen_name)
 
 		num := 32
 		if (idx % 2) == 1 {
@@ -139,6 +159,8 @@ func drawTimeline(t *Twitter) error {
 		}
 
 		fmt.Print(color(num, l))
+
+		// 自分への返信を赤表示
 
 		fmt.Println(tweet.Text)
 
@@ -194,7 +216,7 @@ func changeTime(t string) string {
 	return jt.Format("2006/01/02 15:04:05")
 }
 
-func wait(t *Twitter) {
+func wait(t *Twitter) error {
 
 	for {
 		fmt.Print("> ")
@@ -207,22 +229,7 @@ func wait(t *Twitter) {
 	}
 
 	fmt.Println("Bye!")
-}
-
-func read(c *Credential) error {
-	if b, err := ioutil.ReadFile(".credential"); err != nil {
-		return err
-	} else {
-		return json.Unmarshal(b, c)
-	}
-}
-
-func write(c *Credential) error {
-	if b, err := json.Marshal(c); err != nil {
-		return err
-	} else {
-		return ioutil.WriteFile(".credential", b, 0666)
-	}
+	return nil
 }
 
 var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")

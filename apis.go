@@ -4,21 +4,23 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+
+	"github.com/secondarykey/golib/http"
 )
 
 type Twitter struct {
-	*OAuth
+	*http.OAuth1
 }
 
-func NewTwitter(c *Credential) *Twitter {
+func NewTwitter(c *http.Credential) *Twitter {
 
-	oa := NewOAuth(c,
+	oa := http.NewOAuth1(c,
 		"https://api.twitter.com/oauth/request_token",
 		"https://api.twitter.com/oauth/authorize",
 		"https://api.twitter.com/oauth/access_token",
 	)
 	return &Twitter{
-		OAuth: oa,
+		OAuth1: oa,
 	}
 }
 
